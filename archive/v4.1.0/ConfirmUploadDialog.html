@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #999;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    button {
+      margin: 10px 6px 0 0;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h3>上傳前確認</h3>
+  <p><strong>請確認以下即將上傳的組合內容：</strong></p>
+  <div id="summaryTableContainer"></div>
+
+  <br>
+  <button onclick="confirmUpload()">✅ 確認上傳</button>
+  <button onclick="google.script.host.close()">❌ 返回</button>
+
+  <script>
+    const serializedRecords = '<?= serializedRecords ?>';
+    const records = JSON.parse(serializedRecords);
+
+    function groupRecords(records) {
+      const map = {};
+      records.forEach(r => {
+        const groupName = r[3];
+        for (let i = 4; i < r.length; i += 2) {
+          const name = r[i];
+          const qty = r[i + 1];
+          if (!name || !qty || isNaN(qty)) continue;
+          if (!map[groupName]) map[groupName] = [];
+          map[groupName].push({ product: name, qty });
+        }
+      });
+      return map;
+    }
+
+    function buildTableHTML(grouped) {
+      let html = "";
+      for (const group in grouped) {
+        html += `<h4>組合：${group}</h4>`;
+        html += "<table><tr><th>子商品</th><th>數量</th></tr>";
+        grouped[group].forEach(item => {
+          html += `<tr><td>${item.product}</td><td>${item.qty}</td></tr>`;
+        });
+        html += "</table><br>";
+      }
+      return html;
+    }
+
+    window.onload = function () {
+      const grouped = groupRecords(records);
+      document.getElementById("summaryTableContainer").innerHTML = buildTableHTML(grouped);
+    };
+
+    function confirmUpload() {
+      const raw = JSON.stringify(records);
+      google.script.run
+        .withSuccessHandler(() => {
+          alert("✅ 上傳成功！");
+          google.script.host.close();
+        })
+        .withFailureHandler(e => {
+          alert("❌ 上傳失敗：" + e.message);
+        })
+        .confirmUploadToDatabaseFromString(raw);
+    }
+  </script>
+</body>
+</html>
